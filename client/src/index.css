@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Design tokens (dark default, light override) ---------- */
+:root {
+  --c-bg: 8 10 15;
+  --c-surface: 15 18 26;
+  --c-surface2: 21 25 35;
+  --c-surface3: 28 33 45;
+  --c-line: 32 37 50;
+  --c-line2: 43 49 65;
+  --c-txt: 233 236 243;
+  --c-muted: 148 156 172;
+  --c-faint: 96 104 121;
+  --c-accent: 0 213 124;
+  --c-accent-strong: 0 190 111;
+  --c-accent-soft: 0 213 124;
+  --c-accent-ink: 5 22 14;
+  --c-live: 255 77 94;
+  --c-win: 52 199 123;
+  --c-draw: 130 140 158;
+  --c-loss: 235 87 87;
+
+  color-scheme: dark;
+}
+
+html.light {
+  /* soft, low-glare daylight palette — no pure whites, no near-blacks */
+  --c-bg: 233 235 241;
+  --c-surface: 249 250 252;
+  --c-surface2: 238 240 246;
+  --c-surface3: 228 231 238;
+  --c-line: 222 225 233;
+  --c-line2: 206 210 221;
+  --c-txt: 33 37 46;
+  --c-muted: 99 107 123;
+  --c-faint: 148 155 169;
+  --c-accent: 0 168 98;
+  --c-accent-strong: 0 146 86;
+  --c-accent-soft: 0 168 98;
+  --c-accent-ink: 255 255 255;
+
+  color-scheme: light;
+}
+
+/* ---------- Base ---------- */
+html {
+  @apply antialiased;
+}
+body {
+  @apply bg-bg text-txt font-sans text-sm;
+  text-rendering: optimizeLegibility;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-line2)) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-line2));
+  border-radius: 8px;
+}
+::selection {
+  background: rgb(var(--c-accent) / 0.25);
+}
+
+/* ---------- Reusable primitives ---------- */
+.card {
+  @apply bg-surface border border-line rounded-xl shadow-card;
+}
+.chip {
+  @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-2xs font-semibold;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.skeleton {
+  @apply rounded-lg bg-surface2 relative overflow-hidden;
+}
+.skeleton::after {
+  content: '';
+  @apply absolute inset-0 animate-shimmer;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--c-txt) / 0.06) 40%,
+    rgb(var(--c-txt) / 0.12) 50%,
+    rgb(var(--c-txt) / 0.06) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg;
+}
+.press {
+  @apply transition-transform duration-100 active:scale-[0.985];
+}

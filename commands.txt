@@ -1,0 +1,395 @@
+================================================================================
+ BEYOND90 — COMMANDS & SETUP GUIDE
+================================================================================
+Beyond90 is a live-scores website where every match is managed through a
+Discord bot. There is no mock data: what you add with bot commands is exactly
+what you see on the website.
+
+  Website : http://localhost:5173
+  API     : http://localhost:4000
+  Stack   : React (client) · Express + Prisma/SQLite (server) · discord.js (bot)
+
+-------------------------------------------------------------------------------
+1. SETUP TUTORIAL (FIRST TIME ONLY)
+-------------------------------------------------------------------------------
+
+STEP 1 — Install prerequisites
+    * Node.js 18 or newer:  https://nodejs.org
+    * A Discord account and a server where you have "Manage Server" rights.
+
+STEP 2 — Create the Discord bot application
+    1. Go to https://discord.com/developers/applications
+    2. Click "New Application" -> give it a name (e.g. Beyond90) -> Create.
+    3. Open the "Bot" tab -> click "Reset Token" -> copy the token.
+       (You will paste it into bot/.env in STEP 4. Keep it secret!)
+    4. STILL IN THE "BOT" TAB, scroll down to "Privileged Gateway Intents"
+       and turn ON  "MESSAGE CONTENT INTENT". This is REQUIRED — without it
+        the bot cannot read your lineup messages and /generate-lineup will not work.
+
+STEP 3 — Invite the bot to your server
+    1. In the developer portal open "OAuth2" -> "URL Generator".
+    2. Under SCOPES tick:  bot  +  applications.commands
+    3. Under BOT PERMISSIONS tick:  Send Messages  (that's all it needs).
+    4. Copy the generated URL at the bottom, open it in your browser,
+       pick your server and click Authorize.
+
+STEP 4 — Configure the bot token
+    Open the file  bot/.env  and set:
+
+        DISCORD_TOKEN=paste-your-token-here
+        API_URL=http://localhost:4000
+
+STEP 5 — Start everything
+    From the project root run:
+
+        npm install        (first time only)
+        npm run dev
+
+    This single command starts all three parts together:
+        [WEB] website      -> http://localhost:5173
+        [API] server       -> http://localhost:4000
+        [BOT] Discord bot  -> logs in and registers the slash commands
+
+    Wait until you see "Slash commands registered." in the terminal.
+
+STEP 6 — Use it
+    In your Discord server type /fixture and Discord will suggest the bot's
+    commands. Add your first fixture — it appears on the website instantly,
+    and every open tab refreshes itself live.
+
+    Press Ctrl+C in the terminal to stop everything.
+
+-------------------------------------------------------------------------------
+2. DISCORD SLASH COMMANDS
+-------------------------------------------------------------------------------
+
+=== LEAGUE MANAGEMENT ===
+
+/addleague
+    Create a league — type a top-5 name like PL for the real one, or anything custom:
+
+        /addleague name:Premier League
+        /addleague name:Serie A
+        /addleague name:My Custom League emoji:⚽
+
+    * real competitions like "PL", "LaLiga", "Bundesliga" get their official badge automatically
+    * emoji is optional for top-5 leagues, required for custom leagues
+    * you can nest leagues inside another league with the `parent` option
+
+/removeleague
+    Remove a league — its matches stay but lose the league, and its teams are removed too:
+
+        /removeleague league:My Custom League
+
+/edit-league
+    Change a league's name or emoji on the website. Provide at least one:
+
+        /edit-league league:Serie A emoji:🇮🇹
+        /edit-league league:Serie A name:Serie A TIM
+        /edit-league league:Serie A name:Calcio emoji:⚽
+
+    * only the fields you provide are changed; the rest stays the same
+    * emoji must be a single emoji (unicode or custom Discord emoji)
+
+=== TEAM MANAGEMENT ===
+
+/addteam
+    Add a team with its badge to a league so it appears in the standings table:
+
+        /addteam team:Arsenal emoji:🔴 league:Premier League
+
+    * emoji is a single emoji (unicode or pick a custom server emoji by typing :)
+    * team name must be unique within the league
+
+/editteam
+    Change a team's emoji or name:
+
+        /editteam team:Arsenal emoji:🔴
+        /editteam team:Arsenal name:The Gunners emoji:🔴
+
+    * provides autocomplete for team name
+    * if you change the name, all fixtures and lineups update automatically
+
+/removeteam
+    Remove a team from a league — their fixtures stay but lose the team:
+
+        /removeteam team:Arsenal
+
+/copyteams
+    Copy all teams from one league into another (creates duplicates):
+
+        /copyteams from:Premier League to:Champions League
+
+    * useful for building a league with teams from multiple sources
+
+=== CLUB COMMUNITY ===
+
+/add-club
+    Register a community club (for the Club Finder feature):
+
+        /add-club name:Thunder FC emoji:⚡ invite:https://discord.gg/xyz
+
+    * clubs appear in the Club Finder on the website
+    * emoji and invite link are required
+
+/remove-club
+    Remove a community club:
+
+        /remove-club club:Thunder FC
+
+/clone-club
+    Clone a registered club into a league (creates a team with the same name/emoji):
+
+        /clone-club club:Thunder FC league:Premier League
+
+    * the cloned team gets the club's badge and links back to the club page
+
+=== MATCH MANAGEMENT ===
+
+/fixture
+    Add a fixture between two EXISTING clubs (the ones you registered with
+    /addteam). Their logos are used automatically:
+
+        /fixture home:Arsenal away:Chelsea league:Premier League time:2026-08-30 18:00
+
+    * home, away and league all autocomplete — start typing to pick
+    * time accepts:
+        - full date+time   "2026-08-30 18:00"
+        - ISO strings      "2026-08-30T18:00:00Z"
+        - today only       "19:30" or "7 PM" or "7:45pm"
+
+/friendlymatch
+    Add a friendly between ANY two names — no registration needed:
+
+        /friendlymatch home:FC Barza away:Real Ones homeemoji:🔵 awayemoji:⚪ time:"2026-08-30 21:00"
+
+    * emojis are optional single emoji characters (unicode or custom Discord)
+    * reusing a name later keeps its badge; new emoji updates it
+    * friendlies don't get a standings table — they're exhibitions
+    * /halftime and /fulltime work on them like any other match
+
+/halftime
+    Set the HALF-TIME score of a match. Shows as HT on the website:
+
+        /halftime id:3 homescore:1 awayscore:0
+
+/fulltime
+    Set the FINAL score of a match and mark it finished (FT):
+
+        /fulltime id:3 homescore:2 awayscore:1
+
+/setscore
+    Same as /fulltime — kept for compatibility. Prefer /fulltime:
+
+        /setscore id:3 homescore:2 awayscore:1
+
+/listmatches
+    List every match on the website with its ID:
+
+        /listmatches
+
+/edittime
+    Move a match to a new kick-off time (same formats as /fixture):
+
+        /edittime id:4 time:21:00
+        /edittime id:4 time:2026-08-31 20:45
+
+/postpone
+    Postpone a match to a new date/time:
+
+        /postpone id:4 time:2026-09-01 20:00
+
+/removematch
+    Delete a match from the website completely:
+
+        /removematch id:3
+
+=== LINEUPS ===
+
+/generate-lineup
+    Post a starting lineup for a match. The bot turns it into a pitch image:
+
+        /generate-lineup id:3 side:home
+
+    The bot will then ask you to send the lineup in that channel, one player
+    per line:
+
+        GK - @keeper
+        CB - @defender
+        LB - @leftback
+        RB - @rightback
+        CM - @midfielder
+        LW - @winger1
+        ST - @striker
+
+    * side is home or away (whose lineup it is)
+    * @mentions become Discord usernames; plain names also work
+    * ANY position code works — GK, CB, LCB, RCB, LB, RB, LWB, RWB, CDM,
+      LCM, RCM, LM, RM, CAM, LW, RW, CF, ST, LST, RST, ... anything you type
+      is placed on a sensible spot on the pitch
+    * max 7 players (7-a-side), duplicates of names are allowed
+    * you have 2 minutes to reply; type `cancel` to abort
+    * posting again for the same side replaces the previous lineup
+
+    The bot replies to your message with the generated pitch image and saves
+    the lineup to the website instantly.
+
+/remove-lineup
+    Remove a saved lineup from a match:
+
+        /remove-lineup id:3 side:home
+
+    * clears that side's lineup from the match page instantly
+
+=== STANDINGS ===
+
+/standings
+    Display a league's standings table:
+
+        /standings league:Premier League
+
+    * shows the table as a Discord embed
+    * updates automatically as /fulltime results come in (unless manually edited)
+
+/edit-standings
+    Update a league standings table by pasting rows directly in chat:
+
+        /edit-standings league:Serie A
+
+    * the bot replies telling you to send the standings
+    * send one club per line in this format:
+
+        Barcelona 4, 2, 1, 1, 10, 2, 8, 7, [W, W, D, L]
+        = Name Played, W, D, L, GF, GA, GD, Pts, [Form]
+
+    * form [W, D, L] is optional
+    * name + first number can be space-separated ("Barcelona 4") or the name
+      alone with all 8 numbers after it ("Barcelona, 4, 2, 1, ...")
+    * teams you paste replace their row if they already exist in the table,
+      or get added if new — other rows stay untouched
+    * positions are automatically re-sorted by points → GD → GF → name
+    * once you edit a table this way it becomes manual — future /setscore
+      results won't change it until you run /edit-standings again
+    * you have 2 minutes to send your rows
+    * to clear a team's stats (resets all to 0, removes form):
+        Barcelona clear
+    * you can mix stat rows and clear lines in one message
+
+/id-load
+    Loads every built-in standings table in one command:
+
+        /id-load id:1
+
+    Loads all five at once:
+        ⚽ Premier League · 🇮🇹 Serie A · 🇩🇪 Bundesliga ·
+        🇪🇸 LaLiga · 🏆 ChampionsLeague (40 clubs)
+
+    * 1 is the only valid ID — it means "load everything"
+    * replaces any previous tables (run again anytime to refresh)
+    * results show instantly on the website and via /standings
+    * for custom tables use /ip-load instead (paste raw JSON)
+
+/ip-load
+    Load standings from raw JSON (for advanced users):
+
+        /ip-load league:Serie A data:[{"team":"Juventus","played":10,"won":8,"drawn":1,"lost":1,"goalsFor":20,"goalsAgainst":5,"goalDiff":15,"points":25}]
+
+    * data is a JSON array of standing row objects
+    * useful for importing from external sources
+
+=== TYPICAL WORKFLOW ===
+
+    1. /addleague name:...                                    -> create a league
+    2. /addteam team:... emoji:... league:...                 -> register teams
+    3. /fixture home:... away:... league:... time:..          -> add a match
+       (or /friendlymatch for free-form exhibition games)
+    4. wait for kick-off; the site flips to LIVE by itself
+    5. /halftime id:.. homescore:.. awayscore:..              -> site shows HT score
+    6. /fulltime id:.. homescore:.. awayscore:..              -> site shows FT result
+    7. /removematch id:..                                     -> clean up old matches
+
+    Every bot command updates all open website tabs within a second — no
+    manual refresh needed (live connection; polling is the fallback).
+
+-------------------------------------------------------------------------------
+3. WEBSITE GUIDE
+-------------------------------------------------------------------------------
+
+HOME (/)
+    Day selector rail + calendar. Shows three sections:
+      * Live now   - matches past kick-off with no final score yet; the minute
+                     counter advances on its own (90' + stoppage time).
+      * Kick-offs  - upcoming matches for the selected day.
+      * Results    - finished matches (FT) for the selected day.
+
+MATCHES (/matches)
+    Every match grouped by date, with filters: All / Live / Upcoming /
+    Finished. There is also a manual Refresh button; lists otherwise poll
+    every 30 seconds automatically.
+
+MATCH PAGE (/match/:id)
+    Big scoreboard, kick-off date/time, status and match ID. Polls every 15
+    seconds, so a score set from Discord appears without refreshing.
+    If a lineup was posted with /lineup, the match page also shows it as a
+    football pitch with every player in their position (home and/or away).
+
+SEARCH (press "/" anywhere, or the search button)
+    Find matches by team name. Accent-insensitive ("barca" finds "Barça").
+
+FAVORITES (/favorites)
+    Star matches with the star icon on any card. Starred kick-offs (within
+    24h) and live starred matches also appear in the bell notifications menu.
+
+THEME
+    Profile menu (top right) -> Switch to light/dark mode. Saved per browser.
+
+NOTE ON TEAM CRESTS
+    Crests are generated from the team name you type (initials + consistent
+    colors), so any name works — no configuration needed.
+
+-------------------------------------------------------------------------------
+4. OTHER USEFUL COMMANDS (TERMINAL)
+-------------------------------------------------------------------------------
+
+    npm run dev            Start website + API + Discord bot together
+    npm run dev:all        Same thing (alias)
+    npm run dev:client     Only the website
+    npm run dev:server     Only the API server
+    npm run dev:bot        Only the Discord bot
+    npm run build          Production build of the website (client/dist)
+    npm run prod           Run server + bot from the built output
+
+The match database lives at  dev.db  (SQLite) in the project root.
+To reset it completely: stop everything, delete dev.db, start again.
+
+-------------------------------------------------------------------------------
+5. TROUBLESHOOTING
+-------------------------------------------------------------------------------
+
+Problem: Bot does not respond to slash commands
+    * Did you invite it with BOTH scopes (bot + applications.commands)? See
+      SETUP step 3.
+    * Global slash commands can take up to an hour to appear the very first
+      time. Usually they show up in under a minute — restart Discord
+      (Ctrl+R) if needed.
+    * Check the terminal for "Slash commands registered."
+
+Problem: "Failed to list matches (is the API running?)"
+    The bot could not reach the API. Make sure you started everything with
+    npm run dev (not just npm run dev:bot) and that API_URL in bot/.env is
+    http://localhost:4000.
+
+Problem: Website shows "Could not load matches"
+    The API server is not running. Restart with npm run dev and check the
+    [API] lines in the terminal for errors.
+
+Problem: "Failed to log in to Discord" when the bot starts
+    DISCORD_TOKEN in bot/.env is wrong or was reset. Get a fresh token from
+    the developer portal (Bot tab -> Reset Token).
+
+Problem: I added a match but it is not on the website
+    Lists refresh every ~30 seconds — wait a moment or hit Refresh on the
+    Matches page. Also check the date filter: the Home page only lists the
+    selected day (use /matches for everything).
+
+================================================================================

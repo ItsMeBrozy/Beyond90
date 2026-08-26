@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model League {
+  id        Int      @id @default(autoincrement())
+  emoji     String
+  name      String   @unique
+  createdAt DateTime @default(now())
+  parentId  Int?
+  parent    League?  @relation("LeagueNesting", fields: [parentId], references: [id], onDelete: SetNull)
+  children  League[] @relation("LeagueNesting")
+  matches   Match[]
+  teams     Team[]
+  teamLinks TeamLeague[]
+  standAdjusts  StandingAdjust[]
+  loadedStandings LoadedStandings[]
+}
+
+model Team {
+  id        Int          @id @default(autoincrement())
+  name      String
+  emoji     String       @default("") // badge shown next to the club (unicode or custom Discord emoji)
+  leagueId  Int // home league — clubs can additionally appear in other competitions via TeamLeague
+  league    League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  teamLinks TeamLeague[]
+  standAdjusts StandingAdjust[]
+
+  @@unique([leagueId, name])
+}
+
+// a club can compete in several leagues at once (e.g. domestic + Champions League)
+model TeamLeague {
+  teamId    Int
+  leagueId  Int
+  team      Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  league    League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, leagueId])
+}
+
+model Match {
+  id           Int      @id @default(autoincrement())
+  homeTeam     String
+  awayTeam     String
+  startTime    DateTime
+  homeScore    Int      @default(0)
+  awayScore    Int      @default(0)
+  homeHtScore  Int? // score at half time (set via /halftime), null = not reached
+  awayHtScore  Int?
+  status       String   @default("scheduled") // scheduled | ht | finished
+  homeLineup   String? // JSON: [{pos, name}]
+  awayLineup   String? // JSON: [{pos, name}]
+  leagueId     Int?
+  league       League?  @relation(fields: [leagueId], references: [id], onDelete: SetNull)
+}
+
+// manual standings tweaks for one club in one competition, layered on top of
+// the stats auto-computed from finished matches (untracked wins, deductions…)
+model StandingAdjust {
+  id                Int    @id @default(autoincrement())
+  leagueId          Int
+  teamId            Int
+  extraWon          Int    @default(0)
+  extraDrawn        Int    @default(0)
+  extraLost         Int    @default(0)
+  extraGoalsFor     Int    @default(0)
+  extraGoalsAgainst Int    @default(0)
+  extraPoints       Int    @default(0)
+  league            League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  team              Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, teamId])
+}
+
+// community club directory shown on the website's home sidebar — standalone
+// entries (emoji + name + Discord invite), separate from league teams
+model Club {
+  id        Int      @id @default(autoincrement())
+  emoji     String
+  name      String   @unique
+  invite    String // Discord invite URL for the club's own server
+  createdAt DateTime @default(now())
+}
+
+// loaded standings — manually set table for a league (e.g. via /ip-load)
+model LoadedStandings {
+  id        Int    @id @default(autoincrement())
+  leagueId  Int
+  data      String // JSON string of the standings table
+  createdAt DateTime @default(now())
+  league    League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId])
+}

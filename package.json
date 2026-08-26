@@ -1,0 +1,25 @@
+{
+  "name": "beyond90",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "bot"
+  ],
+  "scripts": {
+    "dev:client": "npm --workspace=client run dev",
+    "dev:server": "npm --workspace=server run dev",
+    "dev:bot": "npm --workspace=bot run start",
+    "dev": "npm run banner && concurrently -k -n WEB,API,BOT -c cyan,magenta,yellow \"npm:dev:client\" \"npm:dev:server\" \"npm run dev:bot\"",
+    "dev:all": "npm run dev",
+    "banner": "node scripts/banner.mjs",
+    "tunnel": "node scripts/tunnel.mjs",
+    "build": "npm --workspace=client run build",
+    "prod": "concurrently \"npm --workspace=server run start\" \"npm --workspace=bot run start\""
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "concurrently": "^8.2.2"
+  }
+}

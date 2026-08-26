@@ -1,0 +1,60 @@
+
+> dev
+> npm run banner && concurrently -k -n WEB,API,BOT -c cyan,magenta,yellow "npm:dev:client" "npm:dev:server" "npm run dev:bot"
+
+
+> banner
+> node scripts/banner.mjs
+
+
+  ____  _____ _   _ ______   ___  ___________ 
+ | __ )| ____| \ | |/ ___\ \ / / _ \____ / __|
+ |  _ \|  _| |  \| | |    \ V / | | |_  <\__ \
+ | |_) | |___| |\  | |___  | || |_| /__/ |___) |
+ |____/|_____|_| \_|\____| |_| \___/____/|____/ 
+
+  ⚽ BEYOND90 — dev stack launching…
+
+   [WEB] http://localhost:5173
+   [API] http://localhost:4000
+   [BOT] Discord gateway
+
+  Press Ctrl+C to stop everything.
+
+(node:12736) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[BOT] 
+[BOT] > dev:bot
+[BOT] > npm --workspace=bot run start
+[BOT] 
+[API] 
+[API] > dev:server
+[API] > npm --workspace=server run dev
+[API] 
+[WEB] 
+[WEB] > dev:client
+[WEB] > npm --workspace=client run dev
+[WEB] 
+[WEB] 
+[WEB] > beyond90-client@0.1.0 dev
+[WEB] > vite
+[WEB] 
+[API] 
+[API] > beyond90-server@0.1.0 dev
+[API] > ts-node-dev --respawn src/index.ts
+[API] 
+[BOT] 
+[BOT] > beyond90-bot@0.1.0 start
+[BOT] > ts-node src/index.ts
+[BOT] 
+[API] [INFO] 19:19:53 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+[WEB] [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+[WEB] 
+[WEB]   [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m442[22m[2m[0m ms[22m
+[WEB] 
+[WEB]   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[WEB] [2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[API] Server listening on port 4000
+[BOT] Logged in as Beyond90#9512
+[BOT] Registering slash commands...
+[BOT] Slash commands registered.
