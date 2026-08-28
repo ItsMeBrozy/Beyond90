@@ -266,7 +266,7 @@ const client = new Client({
 });
 
 client.once('clientReady', async () => {
-  console.log(`Logged in as ${client.user?.tag}`);
+  console.log(`[BOT] ✅ Logged in as ${client.user?.tag} — the Discord bot is running!`);
 
   const commands = [
     new SlashCommandBuilder()
@@ -1832,14 +1832,14 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(token).catch(err => {
-  console.error('❌ Failed to log in to Discord:', err.message);
+  console.error('[BOT] ❌ Failed to log in to Discord:', err.message);
   if (/disallowed intents/i.test(err.message)) {
     console.error(
       '   → Enable "MESSAGE CONTENT INTENT" in the Discord Developer Portal:\n' +
       '     https://discord.com/developers/applications → your app → Bot → Privileged Gateway Intents'
     );
   } else {
-    console.error('   Check DISCORD_TOKEN in bot/.env');
+    console.error('   → Check that DISCORD_TOKEN is set: Orihost panel → Startup/Variables tab (or a bot/.env file).');
   }
   process.exit(1);
 });

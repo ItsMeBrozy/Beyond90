@@ -1,25 +1,31 @@
 {
-  "name": "beyond90",
-  "private": true,
-  "workspaces": [
-    "client",
-    "server",
-    "bot"
-  ],
-  "scripts": {
-    "dev:client": "npm --workspace=client run dev",
-    "dev:server": "npm --workspace=server run dev",
-    "dev:bot": "npm --workspace=bot run start",
-    "dev": "npm run banner && concurrently -k -n WEB,API,BOT -c cyan,magenta,yellow \"npm:dev:client\" \"npm:dev:server\" \"npm run dev:bot\"",
-    "dev:all": "npm run dev",
-    "banner": "node scripts/banner.mjs",
-    "tunnel": "node scripts/tunnel.mjs",
-    "build": "npm --workspace=client run build",
-    "prod": "concurrently \"npm --workspace=server run start\" \"npm --workspace=bot run start\""
+    "name":  "beyond90",
+    "private":  true,
+    "workspaces":  [
+                       "client",
+                       "server",
+                       "bot"
+                   ],
+"scripts": {
+                    "dev:client":  "npm --workspace=client run dev",
+                    "dev:server":  "npm --workspace=server run dev",
+                    "dev:bot":  "npm --workspace=bot run start",
+                    "dev":  "npm run banner \u0026\u0026 npx concurrently -k -n WEB,API,BOT -c cyan,magenta,yellow \"npm:dev:client\" \"npm:dev:server\" \"npm run dev:bot\"",
+                    "dev:all":  "npm run dev",
+                    "banner":  "node scripts/banner.mjs",
+                    "tunnel":  "node scripts/tunnel.mjs",
+"build":  "echo [BUILD 1/3] Building website (client)... && npm --workspace=client run build && echo [BUILD 2/3] Building API server... && npx tsc --project server/tsconfig.json && echo [BUILD 3/3] Building Discord bot... && npx tsc --project bot/tsconfig.json && echo [BUILD] ALL 3 PARTS BUILT SUCCESSFULLY",
+                    "postinstall": "npm run build",
+                    "prod":  "npx concurrently \"npm --workspace=server run start\" \"npm --workspace=bot run start\""
+                },
+"dependencies": {
+    "prisma": "^5.22.0"
   },
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "concurrently": "^8.2.2"
-  }
+"devDependencies": {
+                            "@types/cors":  "^2.8.19",
+                            "@types/express":  "^5.0.6",
+                            "concurrently":  "^8.2.2",
+                            "esbuild":  "^0.28.2",
+                            "typescript": "^5.4.0"
+                        }
 }

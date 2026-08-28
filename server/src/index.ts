@@ -12,6 +12,11 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+// All data + live-update endpoints live under /api. The built React site (served
+// at /) issues every request — including its SSE stream — to /api/…, so mounting
+// the routes here keeps production and development (Vite proxy) aligned.
+const api = express.Router();
+
 // ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
@@ -63,7 +68,7 @@ function notifyChange(): void {
   }
 }
 
-app.get('/events', (req: Request, res: Response) => {
+api.get('/events', (req: Request, res: Response) => {
   res.set({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -114,19 +119,10 @@ function parseInvite(value: unknown): string | null {
   return /^https:\/\/(www\.)?(discord\.gg\/\w+|discord\.com\/invite\/\w+)(\?\S*)?$/i.test(trimmed) ? trimmed : null;
 }
 
-// Serve the built client in production
-if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.resolve(__dirname, '../../client/dist');
-  app.use(express.static(clientDist));
-  app.get('*', (req: Request, res: Response) => {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
-}
-
 const includeLeague = { league: true };
 
 // List all matches (earliest first)
-app.get('/matches', async (_req: Request, res: Response) => {
+api.get('/matches', async (_req: Request, res: Response) => {
   try {
     const matches = await prisma.match.findMany({ orderBy: { startTime: 'asc' }, include: includeLeague });
     res.json(matches);
@@ -136,7 +132,7 @@ app.get('/matches', async (_req: Request, res: Response) => {
 });
 
 // Get a single match
-app.get('/matches/:id', async (req: Request, res: Response) => {
+api.get('/matches/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid match id' });
   try {
@@ -149,7 +145,7 @@ app.get('/matches/:id', async (req: Request, res: Response) => {
 });
 
 // Add a match
-app.post('/matches', async (req: Request, res: Response) => {
+api.post('/matches', async (req: Request, res: Response) => {
   const homeTeam = parseTeamName(req.body?.homeTeam);
   const awayTeam = parseTeamName(req.body?.awayTeam);
   if (!homeTeam || !awayTeam) {
@@ -193,7 +189,7 @@ app.post('/matches', async (req: Request, res: Response) => {
 });
 
 // Update a match (score, kickoff time, or status)
-app.patch('/matches/:id', async (req: Request, res: Response) => {
+api.patch('/matches/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid match id' });
 
@@ -249,7 +245,7 @@ app.patch('/matches/:id', async (req: Request, res: Response) => {
 });
 
 // Save a lineup (home or away) for a match
-app.post('/matches/:id/lineup', async (req: Request, res: Response) => {
+api.post('/matches/:id/lineup', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid match id' });
 
@@ -285,7 +281,7 @@ app.post('/matches/:id/lineup', async (req: Request, res: Response) => {
 });
 
 // Delete a match
-app.delete('/matches/:id', async (req: Request, res: Response) => {
+api.delete('/matches/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid match id' });
   try {
@@ -303,7 +299,7 @@ app.delete('/matches/:id', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // List all leagues (with match and team counts)
-app.get('/leagues', async (_req: Request, res: Response) => {
+api.get('/leagues', async (_req: Request, res: Response) => {
   try {
     const leagues = await prisma.league.findMany({
       orderBy: { createdAt: 'asc' },
@@ -316,7 +312,7 @@ app.get('/leagues', async (_req: Request, res: Response) => {
 });
 
 // Create a league (optionally nested inside another league)
-app.post('/leagues', async (req: Request, res: Response) => {
+api.post('/leagues', async (req: Request, res: Response) => {
   const emoji = parseEmoji(req.body?.emoji);
   const name = parseLeagueName(req.body?.name);
   if (!emoji) return res.status(400).json({ error: 'emoji is required (a single emoji like 🏆, or a custom Discord emoji)' });
@@ -346,7 +342,7 @@ app.post('/leagues', async (req: Request, res: Response) => {
 });
 
 // Edit a league's name and/or emoji
-app.put('/leagues/:id', async (req: Request, res: Response) => {
+api.put('/leagues/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid league id' });
 
@@ -375,7 +371,7 @@ app.put('/leagues/:id', async (req: Request, res: Response) => {
 });
 
 // Delete a league (its matches stay but lose their league)
-app.delete('/leagues/:id', async (req: Request, res: Response) => {
+api.delete('/leagues/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid league id' });
   try {
@@ -393,7 +389,7 @@ app.delete('/leagues/:id', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // List all teams (with their league)
-app.get('/teams', async (_req: Request, res: Response) => {
+api.get('/teams', async (_req: Request, res: Response) => {
   try {
     const teams = await prisma.team.findMany({ orderBy: { createdAt: 'asc' }, include: { league: { include: { parent: true } } } });
     res.json(teams);
@@ -403,7 +399,7 @@ app.get('/teams', async (_req: Request, res: Response) => {
 });
 
 // Add a team to a league
-app.post('/teams', async (req: Request, res: Response) => {
+api.post('/teams', async (req: Request, res: Response) => {
   const name = parseTeamName(req.body?.name);
   if (!name) return res.status(400).json({ error: 'name is required (max 40 characters)' });
   const emoji = parseEmoji(req.body?.emoji);
@@ -429,7 +425,7 @@ app.post('/teams', async (req: Request, res: Response) => {
 });
 
 // Edit an existing team (badge and/or name)
-app.patch('/teams/:id', async (req: Request, res: Response) => {
+api.patch('/teams/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid team id' });
 
@@ -468,7 +464,7 @@ app.patch('/teams/:id', async (req: Request, res: Response) => {
 });
 
 // Remove a team
-app.delete('/teams/:id', async (req: Request, res: Response) => {
+api.delete('/teams/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid team id' });
   try {
@@ -487,7 +483,7 @@ app.delete('/teams/:id', async (req: Request, res: Response) => {
 // and /remove-club on Discord; separate from league teams.
 // ---------------------------------------------------------------------------
 
-app.get('/clubs', async (_req: Request, res: Response) => {
+api.get('/clubs', async (_req: Request, res: Response) => {
   try {
     const clubs = await prisma.club.findMany({ orderBy: { createdAt: 'asc' } });
     res.json(clubs);
@@ -496,7 +492,7 @@ app.get('/clubs', async (_req: Request, res: Response) => {
   }
 });
 
-app.post('/clubs', async (req: Request, res: Response) => {
+api.post('/clubs', async (req: Request, res: Response) => {
   const emoji = parseEmoji(req.body?.emoji);
   const name = parseLeagueName(req.body?.name);
   const invite = parseInvite(req.body?.invite);
@@ -520,7 +516,7 @@ app.post('/clubs', async (req: Request, res: Response) => {
   }
 });
 
-app.delete('/clubs/:id', async (req: Request, res: Response) => {
+api.delete('/clubs/:id', async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (id == null) return res.status(400).json({ error: 'Invalid club id' });
   try {
@@ -600,7 +596,7 @@ function parseAdjustValue(value: unknown): number | null {
   return n;
 }
 
-app.put('/standings/adjust', async (req: Request, res: Response) => {
+api.put('/standings/adjust', async (req: Request, res: Response) => {
   const leagueId = parseId(req.body?.leagueId);
   const teamId = parseId(req.body?.teamId);
   if (leagueId == null || teamId == null) {
@@ -655,7 +651,7 @@ app.put('/standings/adjust', async (req: Request, res: Response) => {
 
 // Add every club of one league — including nested ones — into another league as
 // an additional competition (clubs keep their original leagues)
-app.post('/teams/move', async (req: Request, res: Response) => {
+api.post('/teams/move', async (req: Request, res: Response) => {
   const fromId = parseId(req.body?.fromLeagueId);
   const toId = parseId(req.body?.toLeagueId);
   if (fromId == null || toId == null) return res.status(400).json({ error: 'fromLeagueId and toLeagueId are required' });
@@ -708,7 +704,7 @@ app.post('/teams/move', async (req: Request, res: Response) => {
 // Put ONE already-registered club into another league as well — it keeps its
 // home league and additionally competes in the target one (its row shows up
 // in both standings tables)
-app.post('/teams/link', async (req: Request, res: Response) => {
+api.post('/teams/link', async (req: Request, res: Response) => {
   const teamId = parseId(req.body?.teamId);
   const leagueId = parseId(req.body?.leagueId);
   if (teamId == null || leagueId == null) {
@@ -739,7 +735,7 @@ app.post('/teams/link', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/standings', async (_req: Request, res: Response) => {
+api.get('/standings', async (_req: Request, res: Response) => {
   try {
     const leagues = await prisma.league.findMany({
       orderBy: { createdAt: 'asc' },
@@ -923,7 +919,7 @@ app.get('/standings', async (_req: Request, res: Response) => {
 // goalDiff, points, form.
 // ---------------------------------------------------------------------------
 
-app.post('/standings/load', async (req: Request, res: Response) => {
+api.post('/standings/load', async (req: Request, res: Response) => {
   const leagueId = parseId(req.body?.leagueId);
   const data = req.body?.data;
   if (leagueId == null || !data || typeof data !== 'string') {
@@ -961,7 +957,17 @@ app.post('/standings/load', async (req: Request, res: Response) => {
   }
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 4000;
+
+// Serve the built React client (requests outside /api) in production
+app.use('/api', api);
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // Clean JSON errors instead of stack dumps — most commonly a request whose
 // body isn't valid JSON (e.g. a bare string pasted from a terminal test)
@@ -973,6 +979,9 @@ app.use((err: any, _req: Request, res: Response, _next: unknown) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[API] ✅ Website + API server listening on port ${PORT}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[API] Serving the built website from client/dist');
+  }
 });
