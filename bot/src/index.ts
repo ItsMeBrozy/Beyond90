@@ -17,6 +17,12 @@ import { STANDINGS_PRESETS } from './standings-presets';
 
 dotenv.config();
 
+// a stray failed interaction reply anywhere must never take the whole bot
+// process down — log it and keep the gateway connection alive
+process.on('unhandledRejection', (err) => {
+  console.error('[BOT] Unhandled rejection (ignored):', err);
+});
+
 const token = process.env.DISCORD_TOKEN!;
 // API_URL may or may not already include the "/api" prefix the server mounts
 // its routes under — normalize so both forms work.
@@ -671,7 +677,14 @@ client.on('interactionCreate', async interaction => {
         await interaction.respond([]);
       }
     } catch (e) {
-      await interaction.respond([{ name: '⚠️ Could not load — is the API running?', value: '?' }]);
+      // if the API was just slow, Discord may have already invalidated the
+      // interaction token (3s autocomplete window) — this fallback respond()
+      // can itself fail with "Unknown interaction"; never let that crash the bot
+      try {
+        await interaction.respond([{ name: '⚠️ Could not load — is the API running?', value: '?' }]);
+      } catch {
+        /* interaction already expired — nothing more we can do */
+      }
     }
     return;
   }
