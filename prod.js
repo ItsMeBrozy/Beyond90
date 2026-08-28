@@ -200,7 +200,13 @@ function pipeWithPrefix(stream, name, writer) {
 
 function start(name, file) {
   console.log(c.dim(`[BOOT] ▶ Starting ${name} (${file})...`));
-  const child = fork(path.resolve(__dirname, file), [], { stdio: ['inherit', 'pipe', 'pipe', 'ipc'] });
+  // force the same DATABASE_URL the migrations just ran against — a stray .env
+  // file setting a different value here would silently point the live API/bot
+  // at a stale, unmigrated database
+  const child = fork(path.resolve(__dirname, file), [], {
+    stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
+    env: { ...process.env, DATABASE_URL: 'file:' + DB_PATH },
+  });
   pipeWithPrefix(child.stdout, name, (l) => console.log(l));
   pipeWithPrefix(child.stderr, name, (l) => console.error(l));
   children.set(name, child);
