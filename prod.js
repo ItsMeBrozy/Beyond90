@@ -10,6 +10,32 @@ const path = require('path');
 const PRISMA_SCHEMA = path.resolve(__dirname, 'server/prisma/schema.prisma');
 const DB_PATH = path.resolve(__dirname, 'server/prod.db');
 
+// Load env files so settings stored there (PORT, DISCORD_TOKEN, …) are picked
+// up too. Panel variables always win — we never overwrite an existing value.
+function loadEnvFile(rel) {
+  try {
+    const file = path.resolve(__dirname, rel);
+    if (!fs.existsSync(file)) return;
+    for (const raw of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const m = raw.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) continue;
+      let val = m[2].trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      if (!(m[1] in process.env)) process.env[m[1]] = val;
+    }
+    console.log(`[CONFIG] Loaded environment values from ${rel}`);
+  } catch {
+    /* a broken .env must never stop the boot */
+  }
+}
+loadEnvFile('.env');
+loadEnvFile('bot/.env');
+
 // ---------------------------------------------------------------------------
 // Pretty boot banner + configuration report so the host log is easy to read
 // ---------------------------------------------------------------------------

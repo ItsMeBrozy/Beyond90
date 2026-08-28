@@ -14,7 +14,7 @@
                     "dev:all":  "npm run dev",
                     "banner":  "node scripts/banner.mjs",
                     "tunnel":  "node scripts/tunnel.mjs",
-"build":  "echo [BUILD 1/3] Building website (client)... && npm --workspace=client run build && echo [BUILD 2/3] Building API server... && npx tsc --project server/tsconfig.json && echo [BUILD 3/3] Building Discord bot... && npx tsc --project bot/tsconfig.json && echo [BUILD] ALL 3 PARTS BUILT SUCCESSFULLY",
+"build":  "echo [BUILD 1/3] Building website client... && npm --workspace=client run build && echo [BUILD 2/3] Building API server... && npx tsc --project server/tsconfig.json && echo [BUILD 3/3] Building Discord bot... && npx tsc --project bot/tsconfig.json && echo [BUILD] ALL 3 PARTS BUILT SUCCESSFULLY",
                     "postinstall": "npm run build",
                     "prod":  "npx concurrently \"npm --workspace=server run start\" \"npm --workspace=bot run start\""
                 },
