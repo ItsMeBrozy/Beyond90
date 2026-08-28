@@ -92,3 +92,14 @@ export interface MatchView {
   match: Match;
   phase: MatchPhase;
 }
+
+/** A news post filed under a league (from /news on Discord). */
+export interface News {
+  id: number;
+  leagueId: number;
+  content: string; // raw text with Discord-style formatting (**bold**, - bullets, # headings…)
+  images: string; // JSON string array of image URLs
+  author: string;
+  createdAt: string; // ISO date string
+  league?: League | null;
+}

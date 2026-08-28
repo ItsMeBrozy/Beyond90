@@ -1,0 +1,10 @@
+-- CreateTable
+CREATE TABLE "News" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "leagueId" INTEGER NOT NULL,
+    "content" TEXT NOT NULL,
+    "images" TEXT NOT NULL DEFAULT '[]',
+    "author" TEXT NOT NULL DEFAULT '',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "News_leagueId_fkey" FOREIGN KEY ("leagueId") REFERENCES "League" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);

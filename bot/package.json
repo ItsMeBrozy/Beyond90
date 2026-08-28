@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "npx ts-node src/index.ts",
+    "build": "npx tsc"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.7",

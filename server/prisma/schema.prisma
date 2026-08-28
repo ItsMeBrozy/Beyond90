@@ -8,28 +8,29 @@ datasource db {
 }
 
 model League {
-  id        Int      @id @default(autoincrement())
-  emoji     String
-  name      String   @unique
-  createdAt DateTime @default(now())
-  parentId  Int?
-  parent    League?  @relation("LeagueNesting", fields: [parentId], references: [id], onDelete: SetNull)
-  children  League[] @relation("LeagueNesting")
-  matches   Match[]
-  teams     Team[]
-  teamLinks TeamLeague[]
-  standAdjusts  StandingAdjust[]
+  id              Int               @id @default(autoincrement())
+  emoji           String
+  name            String            @unique
+  createdAt       DateTime          @default(now())
+  parentId        Int?
+  parent          League?           @relation("LeagueNesting", fields: [parentId], references: [id], onDelete: SetNull)
+  children        League[]          @relation("LeagueNesting")
+  matches         Match[]
+  teams           Team[]
+  teamLinks       TeamLeague[]
+  standAdjusts    StandingAdjust[]
   loadedStandings LoadedStandings[]
+  news            News[]
 }
 
 model Team {
-  id        Int          @id @default(autoincrement())
-  name      String
-  emoji     String       @default("") // badge shown next to the club (unicode or custom Discord emoji)
-  leagueId  Int // home league — clubs can additionally appear in other competitions via TeamLeague
-  league    League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  createdAt DateTime      @default(now())
-  teamLinks TeamLeague[]
+  id           Int              @id @default(autoincrement())
+  name         String
+  emoji        String           @default("") // badge shown next to the club (unicode or custom Discord emoji)
+  leagueId     Int // home league — clubs can additionally appear in other competitions via TeamLeague
+  league       League           @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  teamLinks    TeamLeague[]
   standAdjusts StandingAdjust[]
 
   @@unique([leagueId, name])
@@ -37,28 +38,28 @@ model Team {
 
 // a club can compete in several leagues at once (e.g. domestic + Champions League)
 model TeamLeague {
-  teamId    Int
-  leagueId  Int
-  team      Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  league    League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamId   Int
+  leagueId Int
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 
   @@id([teamId, leagueId])
 }
 
 model Match {
-  id           Int      @id @default(autoincrement())
-  homeTeam     String
-  awayTeam     String
-  startTime    DateTime
-  homeScore    Int      @default(0)
-  awayScore    Int      @default(0)
-  homeHtScore  Int? // score at half time (set via /halftime), null = not reached
-  awayHtScore  Int?
-  status       String   @default("scheduled") // scheduled | ht | finished
-  homeLineup   String? // JSON: [{pos, name}]
-  awayLineup   String? // JSON: [{pos, name}]
-  leagueId     Int?
-  league       League?  @relation(fields: [leagueId], references: [id], onDelete: SetNull)
+  id          Int      @id @default(autoincrement())
+  homeTeam    String
+  awayTeam    String
+  startTime   DateTime
+  homeScore   Int      @default(0)
+  awayScore   Int      @default(0)
+  homeHtScore Int? // score at half time (set via /halftime), null = not reached
+  awayHtScore Int?
+  status      String   @default("scheduled") // scheduled | ht | finished
+  homeLineup  String? // JSON: [{pos, name}]
+  awayLineup  String? // JSON: [{pos, name}]
+  leagueId    Int?
+  league      League?  @relation(fields: [leagueId], references: [id], onDelete: SetNull)
 }
 
 // manual standings tweaks for one club in one competition, layered on top of
@@ -91,11 +92,22 @@ model Club {
 
 // loaded standings — manually set table for a league (e.g. via /ip-load)
 model LoadedStandings {
-  id        Int    @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   leagueId  Int
   data      String // JSON string of the standings table
   createdAt DateTime @default(now())
-  league    League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 
   @@unique([leagueId])
+}
+
+// a news post filed under a league (posted via /news on Discord)
+model News {
+  id        Int      @id @default(autoincrement())
+  leagueId  Int
+  content   String // raw text with Discord-style formatting (**bold**, - bullets, # headings, links…)
+  images    String   @default("[]") // JSON string array of image URLs
+  author    String   @default("")
+  createdAt DateTime @default(now())
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 }

@@ -44,6 +44,7 @@ npm run dev
 ```
 
 The API exposes:
+
 - `GET /matches` – list all matches
 - `POST /matches` – create a match (JSON body)
 - `DELETE /matches/:id` – delete a match
@@ -63,7 +64,7 @@ Create a `.env` file inside the `bot` folder (a template is already present):
 
 ```text
 DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN
-API_URL=http://localhost:4000   # URL of the API server
+API_URL=http://localhost:4000/api   # base URL of the API server's /api routes
 ```
 
 Then run:
@@ -73,6 +74,7 @@ npm run dev:bot   # logs the bot in and registers slash commands
 ```
 
 The bot registers its global slash commands, including:
+
 - `/fixture home:<team> away:<team> league:<league> time:<date>` — fixture between existing clubs
 - `/friendlymatch home:<name> away:<name> time:<date>` — exhibition game under 🤝 Friendly Matches
 - `/halftime id:<match-id> homescore:<int> awayscore:<int>`
@@ -103,15 +105,15 @@ The container starts the API, the built Vite client (served with `serve`), and t
 
 ## 📚 Scripts Overview (root `package.json`)
 
-| Script | Description |
-|--------|-------------|
-| `dev:client` | Starts Vite dev server (client) |
-| `dev:server` | Starts Express API with `ts-node-dev` |
-| `dev:bot`    | Starts Discord bot (`ts-node`) |
-| `dev`        | Runs client **and** server concurrently (useful for local development) |
+| Script       | Description                                                                            |
+| ------------ | -------------------------------------------------------------------------------------- |
+| `dev:client` | Starts Vite dev server (client)                                                        |
+| `dev:server` | Starts Express API with `ts-node-dev`                                                  |
+| `dev:bot`    | Starts Discord bot (`ts-node`)                                                         |
+| `dev`        | Runs client **and** server concurrently (useful for local development)                 |
 | `dev:all`    | 🚀 One command for everything: prints a banner, then runs **web + API + bot** together |
-| `build`      | Builds the client for production |
-| `prod`       | Runs the compiled server **and** bot together (used by Docker) |
+| `build`      | Builds the client for production                                                       |
+| `prod`       | Runs the compiled server **and** bot together (used by Docker)                         |
 
 ---
 

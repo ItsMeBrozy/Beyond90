@@ -18,7 +18,9 @@ import { STANDINGS_PRESETS } from './standings-presets';
 dotenv.config();
 
 const token = process.env.DISCORD_TOKEN!;
-const apiUrl = process.env.API_URL!; // e.g., http://localhost:4000
+// API_URL may or may not already include the "/api" prefix the server mounts
+// its routes under — normalize so both forms work.
+const apiUrl = process.env.API_URL!.replace(/\/+$/, '').replace(/\/api$/, '') + '/api'; // e.g., http://localhost:4000/api
 
 // /friendlymatch files its games under this league (auto-created on first use)
 const FRIENDLY_LEAGUE_NAME = 'Friendly Matches';
@@ -71,6 +73,15 @@ interface ApiLeague {
   matchCount?: number;
   parentId?: number | null;
   parent?: { id: number; name: string; emoji: string } | null;
+}
+
+interface ApiNews {
+  id: number;
+  leagueId: number;
+  content: string;
+  images: string;
+  author: string;
+  createdAt: string;
 }
 
 interface StandingRow {
@@ -141,8 +152,11 @@ function matchRealLeague(input: string) {
 }
 
 const apiError = (e: unknown) => {
-  const err = e as { response?: { data?: { error?: string } }; message?: string };
-  return err.response?.data?.error ?? err.message ?? 'Unknown error';
+  const err = e as { response?: { status?: number; data?: { error?: string } }; code?: string; message?: string };
+  if (err.response?.data?.error) return err.response.data.error;
+  if (err.response?.status) return `API responded with status ${err.response.status}`;
+  if (err.code) return `${err.code}${err.message ? ` — ${err.message}` : ''}`;
+  return err.message ?? 'Unknown error';
 };
 
 const ephemeral = (content: string): InteractionReplyOptions => ({ content, flags: MessageFlags.Ephemeral });
@@ -518,6 +532,16 @@ client.once('clientReady', async () => {
           .setDescription('Which team lineup to remove')
           .setRequired(true)
           .addChoices({ name: 'home', value: 'home' }, { name: 'away', value: 'away' })
+      ),
+    new SlashCommandBuilder()
+      .setName('news')
+      .setDescription('Post a news update for a league — send text and image links/attachments in the next message')
+      .addStringOption(o =>
+        o
+          .setName('league')
+          .setDescription('Which league this news is about — start typing to search')
+          .setRequired(true)
+          .setAutocomplete(true)
       ),
     new SlashCommandBuilder()
       .setName('standings')
@@ -1827,6 +1851,95 @@ client.on('interactionCreate', async interaction => {
       console.error('[BOT] Remove lineup failed:', apiError(e));
       await interaction.reply(ephemeral(`❌ Failed to remove lineup: ${apiError(e)}`));
     }
+    return;
+  }
+
+  // ------------------------------------------------------------------- news
+  if (commandName === 'news') {
+    const leagueInput = options.getString('league', true);
+    const league = await findLeague(leagueInput);
+    if (!league) {
+      await interaction.reply(ephemeral('❌ Pick a league from the autocomplete list.'));
+      return;
+    }
+
+    if (!interaction.channel || !interaction.channel.isTextBased() || interaction.channel.isDMBased()) {
+      await interaction.reply(ephemeral('❌ /news can only be used in a server text channel.'));
+      return;
+    }
+    const channel = interaction.channel;
+
+    await interaction.reply(
+      [
+        `📰 **News for ${league.emoji} ${league.name}**`,
+        '',
+        'Send the news update in this channel as your next message.',
+        'Use normal Discord formatting — `**bold**`, `*italic*`, `# heading`, `- bullet point`, `> quote` all carry over to the website.',
+        'Attach image files or paste image links (they show up as a gallery under the post).',
+        'You have **3 minutes**. Type `cancel` to abort.',
+      ].join('\n')
+    );
+
+    let msg: Message;
+    try {
+      const collected = await channel.awaitMessages({
+        filter: (m: Message) => m.author.id === interaction.user.id && !m.author.bot,
+        max: 1,
+        time: 180_000,
+        errors: ['time'],
+      });
+      msg = collected.first() as Message;
+    } catch {
+      await interaction.followUp(ephemeral('⌛ News timed out — nothing was posted.'));
+      return;
+    }
+
+    if (/^cancel$/i.test(msg.content.trim())) {
+      await msg.reply('❌ News cancelled — nothing was posted.');
+      return;
+    }
+
+    // image URLs sitting on their own line become gallery images, not text
+    const IMAGE_URL_RE = /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?$/i;
+    const images: string[] = [];
+    const textLines: string[] = [];
+    for (const rawLine of msg.content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (IMAGE_URL_RE.test(line)) images.push(line);
+      else textLines.push(rawLine);
+    }
+    for (const att of msg.attachments.values()) {
+      if (att.contentType?.startsWith('image/') || IMAGE_URL_RE.test(att.url)) images.push(att.url);
+    }
+    const content = textLines.join('\n').trim();
+
+    if (!content) {
+      await msg.reply('❌ Add some text along with any images — nothing was posted.');
+      return;
+    }
+
+    const author = (msg.member?.displayName ?? msg.author.username).slice(0, 60);
+
+    try {
+      await axios.post(`${apiUrl}/news`, { leagueId: league.id, content, images, author });
+    } catch (e) {
+      console.error('[BOT] News post failed:', apiError(e));
+      await msg.reply(`⚠️ Couldn't post to the website: ${apiError(e)}`);
+      return;
+    }
+
+    await msg.reply({
+      content: [
+        `✅ News posted for **${league.emoji} ${league.name}**`,
+        '───────────────────────',
+        content,
+        images.length > 0 ? `\n🖼️ ${images.length} image${images.length === 1 ? '' : 's'} attached` : '',
+        '',
+        '🌐 Live on the website.',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    });
     return;
   }
 });

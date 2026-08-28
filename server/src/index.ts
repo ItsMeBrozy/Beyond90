@@ -957,6 +957,105 @@ api.post('/standings/load', async (req: Request, res: Response) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// News — posts filed under a league, created via /news on Discord. Content
+// keeps its raw Discord-style markdown (**bold**, - bullets, # headings…);
+// the client renders it. images is a JSON string array of image URLs.
+// ---------------------------------------------------------------------------
+
+function parseNewsContent(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 4000) return null;
+  return trimmed;
+}
+
+function parseNewsImages(value: unknown): string[] | null {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 10) return null;
+  const urls: string[] = [];
+  for (const v of value) {
+    if (typeof v !== 'string' || v.length > 600) return null;
+    if (!/^https?:\/\/\S+$/i.test(v)) return null;
+    urls.push(v);
+  }
+  return urls;
+}
+
+// List news, newest first — optionally scoped to one league
+api.get('/news', async (req: Request, res: Response) => {
+  const leagueId = parseId(req.query.leagueId);
+  try {
+    const news = await prisma.news.findMany({
+      where: leagueId != null ? { leagueId } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: includeLeague,
+    });
+    res.json(news);
+  } catch (e) {
+    console.error('[API] GET /news failed:', e);
+    res.status(500).json({ error: 'Failed to fetch news' });
+  }
+});
+
+// Get a single news post
+api.get('/news/:id', async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  if (id == null) return res.status(400).json({ error: 'Invalid news id' });
+  try {
+    const post = await prisma.news.findUnique({ where: { id }, include: includeLeague });
+    if (!post) return res.status(404).json({ error: `News ${id} not found` });
+    res.json(post);
+  } catch (e) {
+    console.error(`[API] GET /news/${id} failed:`, e);
+    res.status(500).json({ error: 'Failed to fetch news' });
+  }
+});
+
+// Post a news item (from /news on Discord)
+api.post('/news', async (req: Request, res: Response) => {
+  const leagueId = parseId(req.body?.leagueId);
+  if (leagueId == null) return res.status(400).json({ error: 'leagueId is required' });
+
+  const content = parseNewsContent(req.body?.content);
+  if (!content) return res.status(400).json({ error: 'content is required (max 4000 characters)' });
+
+  const images = parseNewsImages(req.body?.images);
+  if (images == null) return res.status(400).json({ error: 'images must be an array of at most 10 http(s) URLs' });
+
+  const author = typeof req.body?.author === 'string' ? req.body.author.trim().slice(0, 60) : '';
+
+  try {
+    const league = await prisma.league.findUnique({ where: { id: leagueId } });
+    if (!league) return res.status(404).json({ error: `League ${leagueId} not found` });
+
+    const post = await prisma.news.create({
+      data: { leagueId, content, images: JSON.stringify(images), author },
+      include: includeLeague,
+    });
+    notifyChange();
+    res.status(201).json(post);
+  } catch (e) {
+    console.error('[API] POST /news failed:', e);
+    res.status(500).json({ error: 'Failed to create news post' });
+  }
+});
+
+// Delete a news post
+api.delete('/news/:id', async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  if (id == null) return res.status(400).json({ error: 'Invalid news id' });
+  try {
+    await prisma.news.delete({ where: { id } });
+    notifyChange();
+    res.status(204).send();
+  } catch (e: any) {
+    if (e?.code === 'P2025') return res.status(404).json({ error: `News ${id} not found` });
+    console.error(`[API] DELETE /news/${id} failed:`, e);
+    res.status(500).json({ error: 'Failed to delete news post' });
+  }
+});
+
 const PORT = Number(process.env.PORT) || 4000;
 
 // Serve the built React client (requests outside /api) in production

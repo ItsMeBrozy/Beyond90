@@ -3,7 +3,7 @@
 // In dev, Vite proxies /api -> http://localhost:4000 (see vite.config.ts).
 // ---------------------------------------------------------------------------
 
-import { Club, League, LineupPlayer, Match, MatchView, StandingsTable, Team } from '../types';
+import { Club, League, LineupPlayer, Match, MatchView, News, StandingsTable, Team } from '../types';
 
 const BASE = '/api';
 
@@ -38,6 +38,7 @@ export const api = {
   getTeams: () => request<Team[]>('/teams'),
   getClubs: () => request<Club[]>('/clubs'),
   getStandings: () => request<StandingsTable[]>('/standings'),
+  getNews: (leagueId?: number) => request<News[]>(`/news${leagueId != null ? `?leagueId=${leagueId}` : ''}`),
 };
 
 /** Accent-insensitive, case-insensitive normalization for search. */
@@ -167,6 +168,18 @@ export function parseLineup(raw?: string | null): LineupPlayer[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((p): p is LineupPlayer => typeof p?.pos === 'string' && typeof p?.name === 'string');
+  } catch {
+    return [];
+  }
+}
+
+/** Safely parses a stored news images JSON string into a list of URLs. */
+export function parseNewsImages(raw?: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((u): u is string => typeof u === 'string');
   } catch {
     return [];
   }

@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: beyond90-web
+    runtime: node
+    plan: free
+    buildCommand: "npm install && npx prisma generate --schema=server/prisma/schema.prisma && npx tsc -p server && npm --workspace=client run build"
+    startCommand: "sh scripts/render-start-web.sh"
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  - type: worker
+    name: beyond90-bot
+    runtime: node
+    plan: free
+    buildCommand: "npm install && npx prisma generate --schema=server/prisma/schema.prisma && npx tsc -p bot"
+    startCommand: "sh scripts/render-start-bot.sh"
+    envVars:
+      - key: API_URL
+        sync: false
+      - key: DISCORD_TOKEN
+        sync: false
